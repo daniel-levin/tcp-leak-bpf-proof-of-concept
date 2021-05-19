@@ -1,0 +1,39 @@
+#!/usr/bin/env bpftrace
+
+#include <net/tcp_states.h>
+#include <net/sock.h>
+#include <linux/socket.h>
+#include <linux/tcp.h>
+
+BEGIN
+{
+	@leaks = 0
+}
+
+kprobe:tcp_set_state
+{
+	$sk = (struct sock *)arg0;
+	$newstate = arg1;
+	if ($newstate == TCP_CLOSE_WAIT) {
+		@closewaits[$sk] = tid;
+		@leaks++;
+	}
+	else {
+		if (@closewaits[$sk]) {
+		  delete(@closewaits[$sk]);
+		  @leaks--;
+		}
+	}
+}
+
+interval:s:1
+{
+	if (@leaks > 0) {
+		print(@closewaits);
+	}
+}
+
+END
+{
+	clear(@closewaits);
+}
