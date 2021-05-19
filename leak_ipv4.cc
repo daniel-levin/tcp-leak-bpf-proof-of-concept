@@ -17,10 +17,9 @@ std::unordered_set<int> leaked_sockets;
 void upon_sighup(int) {
   std::cout << "Received SIGHUP. Cleaning up..." << std::endl;
   for (auto it = leaked_sockets.begin(); it != leaked_sockets.end();) {
-    auto sock = *it;
-    auto close_res = close(sock);
+    auto close_res = close(*it);
     auto err_src = close_res >= 0 ? close_res : errno;
-    std::cout << "Closing socket " << sock << ": " << strerror(err_src)
+    std::cout << "Closing socket " << *it << ": " << strerror(err_src)
               << std::endl;
     it = leaked_sockets.erase(it);
   }
